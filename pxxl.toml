@@ -1,0 +1,7 @@
+[build]
+install = "npm install --ignore-scripts"
+build = "npm run build"
+start = "node dist/index.js"
+
+[env]
+NODE_ENV = "production"
