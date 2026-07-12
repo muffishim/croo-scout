@@ -1,5 +1,6 @@
 [build]
 install = "npm install --ignore-scripts"
+build = "echo 'no build step'"
 start = "npx tsx src/index.ts"
 
 [env]
