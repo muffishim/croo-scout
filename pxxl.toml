@@ -1,7 +1,6 @@
 [build]
 install = "npm install --ignore-scripts"
-build = "npm run build"
-start = "node dist/index.js"
+start = "npx tsx src/index.ts"
 
 [env]
 NODE_ENV = "production"

@@ -47,19 +47,12 @@ export async function getAgentOrders(
   agentId: string,
   limit = 100
 ): Promise<MarketplaceOrder[]> {
-  /*
-   * The SDK exposes listOrders() but scoped to the calling agent.
-   * For cross-agent order history we call the REST endpoint directly.
-   * If this endpoint doesn't exist yet, fall back to the SDK list
-   * (which only returns Scout's own orders — a no-op for scoring purposes).
-   */
   try {
     return get<MarketplaceOrder[]>(
       `/agents/${agentId}/orders?limit=${limit}&status=completed,rejected,expired`
     );
   } catch {
     const orders = await agentClient.listOrders({ pageSize: limit, agentId });
-    // Normalise SDK Order shape to MarketplaceOrder
     return orders
       .filter((o) => o.providerAgentId === agentId)
       .map((o) => ({
@@ -82,7 +75,6 @@ export async function searchServices(
   try {
     return get<MarketplaceService[]>(`/services/search?${params}`);
   } catch {
-    // Fallback: fetch all services and do client-side keyword match
     const all = await get<MarketplaceService[]>("/services");
     const lower = query.toLowerCase();
     return (all as MarketplaceService[]).filter(

@@ -1,3 +1,5 @@
+import "dotenv/config";
+import http from "http";
 import { EventType } from "@croo-network/sdk";
 import { agentClient } from "./agent/client.js";
 import { handleOrder } from "./agent/handler.js";
@@ -10,6 +12,15 @@ const HANDLED_EVENTS = new Set<string>([
   EventType.OrderPaid,
 ]);
 
+// Health-check HTTP server so Pxxl knows the process is alive
+const PORT = process.env.PORT ?? 3000;
+http
+  .createServer((_, res) => {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ status: "ok", agent: "croo-scout" }));
+  })
+  .listen(PORT, () => console.log(`[scout] Health server on :${PORT}`));
+
 async function main(): Promise<void> {
   console.log("[scout] CROO Scout starting...");
 
@@ -21,7 +32,6 @@ async function main(): Promise<void> {
     console.log(`[scout] Negotiation received: ${negotiationId}`);
     try {
       const result = await agentClient.acceptNegotiation(negotiationId);
-      // Cache requirements so OrderPaid handler can access them without an extra API call
       requirementsCache.set(
         result.order.orderId,
         result.negotiation.requirements ?? "{}"
@@ -35,9 +45,7 @@ async function main(): Promise<void> {
   stream.on(EventType.OrderPaid, async (e) => {
     const orderId = e.order_id!;
     console.log(`[scout] Order paid: ${orderId} — processing...`);
-
     try {
-      // Prefer cached requirements; fall back to fetching the negotiation
       let requirements = requirementsCache.get(orderId);
       if (!requirements) {
         const order = await agentClient.getOrder(orderId);
@@ -45,7 +53,6 @@ async function main(): Promise<void> {
         requirements = negotiation.requirements ?? "{}";
       }
       requirementsCache.delete(orderId);
-
       await handleOrder(orderId, requirements);
       console.log(`[scout] Order ${orderId} delivered.`);
     } catch (err) {
